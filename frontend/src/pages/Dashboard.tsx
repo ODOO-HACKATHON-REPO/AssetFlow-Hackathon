@@ -1,197 +1,82 @@
-import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { api } from '../lib/api';
-import type { Asset } from '../lib/api';
-import { useAuth } from '../context/AuthContext';
-import { Navbar } from '../components/Navbar';
-import { StatusBadge } from '../components/StatusBadge';
+import { useEffect, useState } from 'react'
+import { api } from '../lib/api'
+import { StatCard, Card } from '../components/Card'
+import { StatusBadge } from '../components/StatusBadge'
+import { HealthRing } from '../components/HealthRing'
+import { useAuth } from '../context/AuthContext'
 
-export function Dashboard() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const canManage = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+interface Asset {
+  id: string
+  name: string
+  category: string
+  status: string
+  location?: string
+}
 
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showForm, setShowForm] = useState(false);
-
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
-  const [location, setLocation] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState('');
-
-  async function loadAssets() {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await api.get('/assets');
-      setAssets(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load assets');
-    } finally {
-      setLoading(false);
-    }
-  }
+export default function Dashboard() {
+  const { user } = useAuth()
+  const [assets, setAssets] = useState<Asset[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadAssets();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    api.getAssets()
+      .then(setAssets)
+      .catch(() => setAssets([]))
+      .finally(() => setLoading(false))
+  }, [])
 
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault();
-    setFormError('');
-    setSubmitting(true);
-    try {
-      await api.post('/assets', { name, category, location: location || undefined });
-      setName('');
-      setCategory('');
-      setLocation('');
-      setShowForm(false);
-      loadAssets();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to create asset');
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  const available = assets.filter((a) => a.status === 'AVAILABLE').length
+  const allocated = assets.filter((a) => a.status === 'ALLOCATED').length
+  const maintenance = assets.filter((a) => a.status === 'MAINTENANCE').length
 
   return (
-    <div className="min-h-screen bg-[#F6F7FB]">
-      <Navbar />
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-[#12141C]">
-              Assets
-            </h1>
-            <p className="mt-1 text-[13px] text-[#6B7280]">
-              {assets.length} asset{assets.length === 1 ? '' : 's'} tracked
-            </p>
-          </div>
-          {canManage && (
-            <button
-              onClick={() => setShowForm((s) => !s)}
-              className="rounded-md bg-[#2451FF] px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
-            >
-              {showForm ? 'Cancel' : '+ New asset'}
-            </button>
-          )}
+    <div className="animate-fade-up space-y-8">
+      <div>
+        <p className="font-mono text-xs uppercase tracking-wide text-text-faint">
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </p>
+        <h1 className="mt-1 font-display text-2xl font-semibold text-text">
+          Welcome back, {user?.name?.split(' ')[0] ?? 'there'}
+        </h1>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Total assets" value={String(assets.length)} accent="indigo" />
+        <StatCard label="Available" value={String(available)} sublabel="Ready to allocate" />
+        <StatCard label="In use" value={String(allocated)} sublabel="Currently allocated" accent="teal" />
+        <StatCard label="Maintenance" value={String(maintenance)} sublabel="Needs attention" />
+      </div>
+
+      <div>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-display text-lg font-medium text-text">Asset registry</h2>
         </div>
 
-        {showForm && (
-          <form
-            onSubmit={handleCreate}
-            className="mb-6 rounded-lg border border-[#E3E5ED] bg-white p-5 shadow-sm"
-          >
-            {formError && (
-              <div className="mb-4 rounded-md bg-[#FDECEC] px-3 py-2 text-[13px] text-[#DC2626]">
-                {formError}
-              </div>
-            )}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div>
-                <label className="mb-1 block text-[12px] font-medium text-[#12141C]">Name</label>
-                <input
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-md border border-[#E3E5ED] px-3 py-2 text-[14px] outline-none focus:border-[#2451FF]"
-                  placeholder="Dell Laptop"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-[12px] font-medium text-[#12141C]">
-                  Category
-                </label>
-                <input
-                  required
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-md border border-[#E3E5ED] px-3 py-2 text-[14px] outline-none focus:border-[#2451FF]"
-                  placeholder="Electronics"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-[12px] font-medium text-[#12141C]">
-                  Location
-                </label>
-                <input
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full rounded-md border border-[#E3E5ED] px-3 py-2 text-[14px] outline-none focus:border-[#2451FF]"
-                  placeholder="Office A"
-                />
-              </div>
+        <Card>
+          {loading ? (
+            <div className="p-8 text-center text-sm text-text-muted">Loading assets…</div>
+          ) : assets.length === 0 ? (
+            <div className="p-8 text-center text-sm text-text-muted">
+              No assets yet. Add your first asset to get started.
             </div>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="mt-4 rounded-md bg-[#12141C] px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            >
-              {submitting ? 'Adding…' : 'Add asset'}
-            </button>
-          </form>
-        )}
-
-        {error && (
-          <div className="mb-4 rounded-md bg-[#FDECEC] px-3 py-2 text-[13px] text-[#DC2626]">
-            {error}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="py-16 text-center text-[13px] text-[#6B7280]">Loading assets…</div>
-        ) : assets.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-[#E3E5ED] bg-white py-16 text-center">
-            <p className="text-[13px] text-[#6B7280]">No assets yet.</p>
-            {canManage && (
-              <p className="mt-1 text-[13px] text-[#6B7280]">
-                Add your first asset to get started.
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-lg border border-[#E3E5ED] bg-white shadow-sm">
-            <table className="w-full text-left text-[13px]">
-              <thead>
-                <tr className="border-b border-[#E3E5ED] bg-[#FAFBFC] text-[11px] uppercase tracking-wider text-[#9AA1AF]">
-                  <th className="px-5 py-3 font-medium">Name</th>
-                  <th className="px-5 py-3 font-medium">Category</th>
-                  <th className="px-5 py-3 font-medium">Location</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {assets.map((a) => (
-                  <tr key={a.id} className="border-b border-[#F1F2F5] last:border-0 hover:bg-[#FAFBFC]">
-                    <td className="px-5 py-3 font-medium text-[#12141C]">{a.name}</td>
-                    <td className="px-5 py-3 text-[#6B7280]">{a.category}</td>
-                    <td className="px-5 py-3 text-[#6B7280]">{a.location || '—'}</td>
-                    <td className="px-5 py-3">
-                      <StatusBadge status={a.status} />
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      {a.status === 'AVAILABLE' && (
-                        <button
-                          onClick={() => navigate(`/bookings?assetId=${a.id}`)}
-                          className="text-[12px] font-medium text-[#2451FF] hover:underline"
-                        >
-                          Book →
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </main>
+          ) : (
+            <div className="divide-y divide-border-soft">
+              {assets.map((asset) => (
+                <div key={asset.id} className="flex items-center justify-between px-5 py-4">
+                  <div className="flex items-center gap-4">
+                    <HealthRing score={Math.floor(Math.random() * 40) + 60} size={40} />
+                    <div>
+                      <p className="text-sm font-medium text-text">{asset.name}</p>
+                      <p className="font-mono text-xs text-text-faint">{asset.category}{asset.location ? ` · ${asset.location}` : ''}</p>
+                    </div>
+                  </div>
+                  <StatusBadge status={asset.status as any} pulse={asset.status === 'AVAILABLE'} />
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
-  );
+  )
 }

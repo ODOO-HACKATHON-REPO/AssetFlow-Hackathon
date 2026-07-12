@@ -1,68 +1,58 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { api } from '../lib/api';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+interface User {
+  id: string
+  name: string
+  email: string
+  role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE'
 }
 
 interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role?: string) => Promise<void>;
-  logout: () => void;
+  user: User | null
+  token: string | null
+  login: (token: string, user: User) => void
+  logout: () => void
+  isAuthenticated: boolean
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null)
+  const [token, setToken] = useState<string | null>(null)
 
   useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        localStorage.removeItem('user');
-      }
+    const storedToken = localStorage.getItem('assetflow_token')
+    const storedUser = localStorage.getItem('assetflow_user')
+    if (storedToken && storedUser) {
+      setToken(storedToken)
+      setUser(JSON.parse(storedUser))
     }
-    setLoading(false);
-  }, []);
+  }, [])
 
-  async function login(email: string, password: string) {
-    const data = await api.post('/auth/login', { email, password });
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setUser(data.user);
-  }
-
-  async function register(name: string, email: string, password: string, role?: string) {
-    const data = await api.post('/auth/register', { name, email, password, role });
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setUser(data.user);
+  function login(newToken: string, newUser: User) {
+    localStorage.setItem('assetflow_token', newToken)
+    localStorage.setItem('assetflow_user', JSON.stringify(newUser))
+    setToken(newToken)
+    setUser(newUser)
   }
 
   function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
+    localStorage.removeItem('assetflow_token')
+    localStorage.removeItem('assetflow_user')
+    setToken(null)
+    setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
-  );
+  )
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  return ctx
 }

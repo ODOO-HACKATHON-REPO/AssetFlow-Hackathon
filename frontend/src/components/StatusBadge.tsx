@@ -1,25 +1,23 @@
-const ASSET_STYLES: Record<string, string> = {
-  AVAILABLE: 'bg-[#EAFBF1] text-[#16A34A]',
-  ALLOCATED: 'bg-[#EEF1FF] text-[#2451FF]',
-  MAINTENANCE: 'bg-[#FEF6E7] text-[#D97706]',
-  RETIRED: 'bg-[#F1F2F5] text-[#6B7280]',
-};
+type Status = 'AVAILABLE' | 'ALLOCATED' | 'MAINTENANCE' | 'RETIRED' | 'CONFIRMED' | 'PENDING' | 'CANCELLED' | 'COMPLETED'
 
-const BOOKING_STYLES: Record<string, string> = {
-  PENDING: 'bg-[#FEF6E7] text-[#D97706]',
-  CONFIRMED: 'bg-[#EEF1FF] text-[#2451FF]',
-  CANCELLED: 'bg-[#FDECEC] text-[#DC2626]',
-  COMPLETED: 'bg-[#EAFBF1] text-[#16A34A]',
-};
+const statusConfig: Record<Status, { color: string; dot: string; label: string }> = {
+  AVAILABLE: { color: 'text-status-available', dot: 'bg-status-available', label: 'Available' },
+  ALLOCATED: { color: 'text-status-inuse', dot: 'bg-status-inuse', label: 'Allocated' },
+  MAINTENANCE: { color: 'text-status-risk', dot: 'bg-status-risk', label: 'Maintenance' },
+  RETIRED: { color: 'text-text-faint', dot: 'bg-text-faint', label: 'Retired' },
+  CONFIRMED: { color: 'text-status-available', dot: 'bg-status-available', label: 'Confirmed' },
+  PENDING: { color: 'text-status-inuse', dot: 'bg-status-inuse', label: 'Pending' },
+  CANCELLED: { color: 'text-status-critical', dot: 'bg-status-critical', label: 'Cancelled' },
+  COMPLETED: { color: 'text-text-muted', dot: 'bg-text-faint', label: 'Completed' },
+}
 
-export function StatusBadge({ status }: { status: string }) {
-  const style = ASSET_STYLES[status] || BOOKING_STYLES[status] || 'bg-[#F1F2F5] text-[#6B7280]';
+export function StatusBadge({ status, pulse = false }: { status: Status; pulse?: boolean }) {
+  const config = statusConfig[status] ?? statusConfig.PENDING
+
   return (
-    <span
-      className={`relative inline-flex items-center gap-1 rounded-[3px] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${style}`}
-    >
-      <span className="absolute -left-[3px] top-1/2 h-1.5 w-1.5 -translate-y-1/2 rotate-45 bg-white" />
-      {status}
+    <span className={`inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-surface-raised px-2.5 py-1 font-mono text-xs ${config.color}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${config.dot} ${pulse ? 'status-pulse' : ''}`} />
+      {config.label}
     </span>
-  );
+  )
 }

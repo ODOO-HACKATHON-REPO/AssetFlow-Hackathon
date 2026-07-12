@@ -1,57 +1,37 @@
-const API_URL = 'http://localhost:5000/api';
-
-function getToken() {
-  return localStorage.getItem('token');
-}
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
 async function request(path: string, options: RequestInit = {}) {
-  const token = getToken();
+  const token = localStorage.getItem('assetflow_token')
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
+      ...options.headers,
     },
-  });
+  })
 
-  const data = await res.json().catch(() => ({}));
+  const data = await res.json().catch(() => ({}))
 
   if (!res.ok) {
-    throw new Error(data.error || 'Request failed');
+    throw new Error(data.error || 'Something went wrong')
   }
 
-  return data;
+  return data
 }
 
 export const api = {
-  get: (path: string) => request(path, { method: 'GET' }),
-  post: (path: string, body: unknown) =>
-    request(path, { method: 'POST', body: JSON.stringify(body) }),
-  put: (path: string, body: unknown) =>
-    request(path, { method: 'PUT', body: JSON.stringify(body) }),
-  delete: (path: string) => request(path, { method: 'DELETE' }),
-};
+  register: (body: { name: string; email: string; password: string; role?: string }) =>
+    request('/api/auth/register', { method: 'POST', body: JSON.stringify(body) }),
 
-export interface Asset {
-  id: string;
-  name: string;
-  category: string;
-  status: 'AVAILABLE' | 'ALLOCATED' | 'MAINTENANCE' | 'RETIRED';
-  location: string | null;
-  qrCode: string | null;
-  createdAt: string;
-}
+  login: (body: { email: string; password: string }) =>
+    request('/api/auth/login', { method: 'POST', body: JSON.stringify(body) }),
 
-export interface Booking {
-  id: string;
-  assetId: string;
-  userId: string;
-  startTime: string;
-  endTime: string;
-  purpose: string | null;
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
-  createdAt: string;
-  asset?: Asset;
+  getAssets: () => request('/api/assets'),
+  createAsset: (body: any) => request('/api/assets', { method: 'POST', body: JSON.stringify(body) }),
+
+  getBookings: () => request('/api/bookings'),
+  createBooking: (body: any) => request('/api/bookings', { method: 'POST', body: JSON.stringify(body) }),
+  cancelBooking: (id: string) => request(`/api/bookings/${id}/cancel`, { method: 'PATCH' }),
 }
